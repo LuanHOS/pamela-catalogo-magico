@@ -69,7 +69,9 @@ export const cart = {
   },
   subscribe(l: Listener) {
     listeners.add(l);
-    return () => listeners.delete(l);
+    return () => {
+      listeners.delete(l);
+    };
   },
 };
 
@@ -77,10 +79,7 @@ export function useCart() {
   const [snap, setSnap] = useState<CartItem[]>([]);
   useEffect(() => {
     setSnap(cart.get());
-    const unsub = cart.subscribe(() => setSnap([...cart.get()]));
-    return () => {
-      unsub;
-    };
+    return cart.subscribe(() => setSnap([...cart.get()]));
   }, []);
   return snap;
 }
