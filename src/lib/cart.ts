@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 export type CartItem = {
   id: string;
@@ -77,7 +77,10 @@ export function useCart() {
   const [snap, setSnap] = useState<CartItem[]>([]);
   useEffect(() => {
     setSnap(cart.get());
-    return cart.subscribe(() => setSnap([...cart.get()]));
+    const unsub = cart.subscribe(() => setSnap([...cart.get()]));
+    return () => {
+      unsub;
+    };
   }, []);
   return snap;
 }
