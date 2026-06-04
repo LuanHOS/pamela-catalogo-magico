@@ -14,6 +14,24 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -47,6 +65,7 @@ export type Database = {
           max_per_cart: number
           name: string
           price: number
+          sale_price: number | null
           sort_order: number
           updated_at: string
         }
@@ -61,6 +80,7 @@ export type Database = {
           max_per_cart?: number
           name: string
           price?: number
+          sale_price?: number | null
           sort_order?: number
           updated_at?: string
         }
@@ -75,6 +95,7 @@ export type Database = {
           max_per_cart?: number
           name?: string
           price?: number
+          sale_price?: number | null
           sort_order?: number
           updated_at?: string
         }
