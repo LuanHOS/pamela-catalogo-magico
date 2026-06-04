@@ -394,8 +394,17 @@ function ProductForm({
     const path = `${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
     if (error) { toast.error(error.message); setUploading(false); return; }
-    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-    setImageUrl(data.publicUrl);
+    // Bucket é privado (políticas do workspace bloqueiam público), usamos URL assinada de longa duração.
+    const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+    const { data, error: sErr } = await supabase.storage
+      .from("product-images")
+      .createSignedUrl(path, TEN_YEARS);
+    if (sErr || !data?.signedUrl) {
+      toast.error(sErr?.message ?? "Falha ao gerar URL da imagem");
+      setUploading(false);
+      return;
+    }
+    setImageUrl(data.signedUrl);
     setUploading(false);
   }
 
