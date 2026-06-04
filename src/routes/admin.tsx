@@ -122,7 +122,7 @@ function LoginForm() {
       <form onSubmit={submit} className="space-y-4 rounded-2xl border border-border bg-card p-6 shadow-sm">
         <div>
           <Label htmlFor="u">Usuário</Label>
-          <Input id="u" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin" autoFocus />
+          <Input id="u" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="" autoFocus />
         </div>
         <div>
           <Label htmlFor="p">Senha</Label>
