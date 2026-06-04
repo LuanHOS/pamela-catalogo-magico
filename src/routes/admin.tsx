@@ -433,16 +433,17 @@ function ProductForm({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/50 p-0 sm:items-center sm:p-6">
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-6">
       <form
         onSubmit={save}
-        className="w-full max-w-2xl space-y-4 rounded-t-2xl bg-background p-6 shadow-2xl sm:rounded-2xl"
+        className="flex w-full max-w-2xl max-h-[100dvh] flex-col rounded-t-2xl bg-background shadow-2xl sm:max-h-[90vh] sm:rounded-2xl"
       >
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between border-b border-border px-6 py-4">
           <h3 className="font-display text-xl font-black">{product ? "Editar" : "Novo"} produto</h3>
           <button type="button" onClick={onClose} className="text-sm text-muted-foreground">Fechar</button>
         </div>
 
+        <div className="flex-1 overflow-y-auto px-6 py-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="sm:col-span-2">
             <Label>Foto</Label>
@@ -506,8 +507,9 @@ function ProductForm({
             <Switch checked={inStock} onCheckedChange={setInStock} />
           </div>
         </div>
+        </div>
 
-        <div className="flex justify-end gap-2 pt-2">
+        <div className="flex justify-end gap-2 border-t border-border px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button type="button" variant="outline" onClick={onClose} className="rounded-full">Cancelar</Button>
           <Button type="submit" disabled={saving} className="rounded-full">
             {saving ? "Salvando…" : "Salvar"}
