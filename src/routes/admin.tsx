@@ -13,7 +13,7 @@ import { toast, Toaster } from "sonner";
 import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, UserPlus } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
-  head: () => ({ meta: [{ title: "Administração — Banquinha da Pâmela" }] }),
+  head: () => ({ meta: [{ title: "Administração — Banca da Pamela" }] }),
   component: AdminPage,
 });
 
