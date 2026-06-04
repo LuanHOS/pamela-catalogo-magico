@@ -260,23 +260,6 @@ function CatChip({ active, onClick, children }: { active: boolean; onClick: () =
   );
 }
 
-function ViewButton({ active, onClick, label, children }: { active: boolean; onClick: () => void; label: string; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={
-        "flex h-9 w-9 items-center justify-center rounded-full transition " +
-        (active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")
-      }
-    >
-      {children}
-    </button>
-  );
-}
-
 function PromoBadge() {
   return (
     <span className="absolute left-2 top-2 z-10 inline-flex items-center gap-1 rounded-full bg-accent px-2 py-1 text-[10px] font-black uppercase tracking-wide text-accent-foreground shadow">
