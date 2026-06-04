@@ -210,16 +210,10 @@ function Index() {
                 : "A Pamela está organizando o estoque. Volte logo!"}
             </p>
           </div>
-        ) : viewMode === "grid" ? (
+        ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {filtered.map((p) => (
               <ProductCard key={p.id} p={p} onOpen={() => setDetail(p)} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {filtered.map((p) => (
-              <ProductListRow key={p.id} p={p} onOpen={() => setDetail(p)} />
             ))}
           </div>
         )}
