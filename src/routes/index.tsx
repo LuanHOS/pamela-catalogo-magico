@@ -44,7 +44,12 @@ function Index() {
     (async () => {
       const [c, p] = await Promise.all([
         supabase.from("categories").select("*").order("sort_order"),
-        supabase.from("products").select("*").order("sort_order"),
+        supabase
+          .from("products")
+          .select(
+            "id, name, description, price, in_stock, max_per_cart, sort_order, category_id, image_url, created_at, updated_at",
+          )
+          .order("sort_order"),
       ]);
       setCats(c.data ?? []);
       setProds((p.data ?? []) as Product[]);
