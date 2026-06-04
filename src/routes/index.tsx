@@ -44,6 +44,7 @@ function Index() {
   const [cats, setCats] = useState<Category[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeCat, setActiveCat] = useState<string | "all">("all");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,6 +64,9 @@ function Index() {
           )
           .order("sort_order"),
       ]);
+      if (c.error || p.error) {
+        setLoadError(c.error?.message ?? p.error?.message ?? "Erro ao carregar catálogo");
+      }
       setCats(c.data ?? []);
       setProds((p.data ?? []) as Product[]);
       setLoading(false);
