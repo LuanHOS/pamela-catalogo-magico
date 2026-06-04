@@ -25,6 +25,17 @@ async function assertCallerIsAdmin(context: { supabase: any; userId: string }) {
   if (!data) throw new Error("Sem permissão de administrador.");
 }
 
+function pwdKey(userId: string) {
+  return `admin_pwd:${userId}`;
+}
+
+async function storePassword(userId: string, password: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin
+    .from("app_settings")
+    .upsert({ key: pwdKey(userId), value: password }, { onConflict: "key" });
+}
+
 /* ---------- Seed do admin fixo (idempotente, sem auth) ---------- */
 export const ensureSeedAdmin = createServerFn({ method: "POST" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
