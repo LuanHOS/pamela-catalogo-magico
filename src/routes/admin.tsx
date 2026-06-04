@@ -629,9 +629,20 @@ function AdminFormModal({
   const isEdit = !!editing;
   const [user, setUser] = useState(editing?.username ?? "");
   const [pass, setPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [loadingPass, setLoadingPass] = useState(isEdit);
   const [loading, setLoading] = useState(false);
   const create = useServerFn(createAdminUser);
   const update = useServerFn(updateAdminUser);
+  const getPwd = useServerFn(getAdminPassword);
+
+  useEffect(() => {
+    if (!isEdit || !editing) return;
+    getPwd({ data: { userId: editing.id } })
+      .then((r) => setPass(r.password ?? ""))
+      .catch(() => {})
+      .finally(() => setLoadingPass(false));
+  }, [isEdit, editing, getPwd]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -684,8 +695,29 @@ function AdminFormModal({
           )}
         </div>
         <div>
-          <Label htmlFor="ap">{isEdit ? "Nova senha (deixe em branco para manter)" : "Senha"}</Label>
-          <Input id="ap" type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="mínimo 6 caracteres" />
+          <Label htmlFor="ap">Senha</Label>
+          <div className="relative">
+            <Input
+              id="ap"
+              type={showPass ? "text" : "password"}
+              value={pass}
+              onChange={(e) => setPass(e.target.value)}
+              placeholder={loadingPass ? "Carregando…" : "mínimo 6 caracteres"}
+              className="pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-xs font-bold text-muted-foreground hover:bg-secondary"
+            >
+              {showPass ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
+          {isEdit && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Senha atual exibida acima. Edite para alterar.
+            </p>
+          )}
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} className="rounded-full">Cancelar</Button>
