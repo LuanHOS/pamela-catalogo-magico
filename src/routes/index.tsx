@@ -141,6 +141,7 @@ function Index() {
             onSubmit={(e) => {
               e.preventDefault();
               setSearchTerm(searchInput);
+              if (searchInput.trim()) setActiveCat("all");
             }}
             className="flex gap-2"
           >
@@ -191,9 +192,13 @@ function Index() {
           <p className="text-muted-foreground">Carregando catálogo…</p>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-            <p className="text-lg font-semibold">Nenhum produto por aqui ainda.</p>
+            <p className="text-lg font-semibold">
+              {searchTerm ? "Produto não encontrado." : "Nenhum produto por aqui ainda."}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              A Pâmela está organizando o estoque. Volte logo!
+              {searchTerm
+                ? "Tente buscar por outro nome ou limpe a pesquisa."
+                : "A Pâmela está organizando o estoque. Volte logo!"}
             </p>
           </div>
         ) : (
