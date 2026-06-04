@@ -44,6 +44,7 @@ function Index() {
   const [cats, setCats] = useState<Category[]>([]);
   const [prods, setProds] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeCat, setActiveCat] = useState<string | "all">("all");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
@@ -63,6 +64,9 @@ function Index() {
           )
           .order("sort_order"),
       ]);
+      if (c.error || p.error) {
+        setLoadError(c.error?.message ?? p.error?.message ?? "Erro ao carregar catálogo");
+      }
       setCats(c.data ?? []);
       setProds((p.data ?? []) as Product[]);
       setLoading(false);
@@ -199,6 +203,11 @@ function Index() {
       <main className="mx-auto max-w-7xl px-4 py-8">
         {loading ? (
           <p className="text-muted-foreground">Carregando catálogo…</p>
+        ) : loadError ? (
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-8 text-center">
+            <p className="text-lg font-semibold text-destructive">Não foi possível carregar o catálogo.</p>
+            <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <p className="text-lg font-semibold">
