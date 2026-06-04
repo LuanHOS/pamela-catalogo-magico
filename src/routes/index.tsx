@@ -5,7 +5,7 @@ import { cart, useCart } from "@/lib/cart";
 import { brl, useWhatsAppNumber, whatsappLink } from "@/lib/whatsapp";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, LayoutGrid, List, X, Tag } from "lucide-react";
+import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, X, Tag } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -47,7 +47,6 @@ function Index() {
   const [activeCat, setActiveCat] = useState<string | "all">("all");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [cartOpen, setCartOpen] = useState(false);
   const [detail, setDetail] = useState<Product | null>(null);
   const items = useCart();
@@ -192,14 +191,6 @@ function Index() {
                 {c.name}
               </CatChip>
             ))}
-            <div className="ml-auto flex shrink-0 rounded-full bg-secondary p-1">
-              <ViewButton active={viewMode === "grid"} onClick={() => setViewMode("grid")} label="Grade">
-                <LayoutGrid className="h-4 w-4" />
-              </ViewButton>
-              <ViewButton active={viewMode === "list"} onClick={() => setViewMode("list")} label="Lista">
-                <List className="h-4 w-4" />
-              </ViewButton>
-            </div>
           </div>
         </div>
       </div>
@@ -219,16 +210,10 @@ function Index() {
                 : "A Pamela está organizando o estoque. Volte logo!"}
             </p>
           </div>
-        ) : viewMode === "grid" ? (
+        ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {filtered.map((p) => (
               <ProductCard key={p.id} p={p} onOpen={() => setDetail(p)} />
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {filtered.map((p) => (
-              <ProductListRow key={p.id} p={p} onOpen={() => setDetail(p)} />
             ))}
           </div>
         )}
@@ -268,23 +253,6 @@ function CatChip({ active, onClick, children }: { active: boolean; onClick: () =
       className={
         "whitespace-nowrap rounded-full px-4 py-2 text-sm font-bold transition " +
         (active ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-secondary/70")
-      }
-    >
-      {children}
-    </button>
-  );
-}
-
-function ViewButton({ active, onClick, label, children }: { active: boolean; onClick: () => void; label: string; children: React.ReactNode }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label={label}
-      title={label}
-      className={
-        "flex h-9 w-9 items-center justify-center rounded-full transition " +
-        (active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")
       }
     >
       {children}
@@ -384,70 +352,6 @@ function ProductCard({ p, onOpen }: { p: Product; onOpen: () => void }) {
             </div>
           )}
         </div>
-      </div>
-    </article>
-  );
-}
-
-function ProductListRow({ p, onOpen }: { p: Product; onOpen: () => void }) {
-  const items = useCart();
-  const inCart = items.find((i) => i.id === p.id);
-  const qty = inCart?.qty ?? 0;
-  const disabled = !p.in_stock;
-  const reachedMax = qty >= p.max_per_cart;
-  const eff = effectivePrice(p);
-
-  return (
-    <article
-      onClick={onOpen}
-      className="relative flex cursor-pointer items-stretch gap-3 overflow-hidden rounded-xl border border-border bg-card p-3 shadow-sm transition hover:shadow-md"
-    >
-      {isPromo(p) && <PromoBadge />}
-      <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-secondary sm:h-32 sm:w-32">
-        {p.image_url ? (
-          <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <ShoppingBag className="h-10 w-10 opacity-30" />
-          </div>
-        )}
-        {!p.in_stock && (
-          <span className="absolute left-1 top-1 rounded-full bg-destructive px-2 py-0.5 text-[10px] font-bold text-destructive-foreground">
-            Sem estoque
-          </span>
-        )}
-      </div>
-      <div className="flex flex-1 flex-col min-w-0">
-        <h3 className="font-display text-base font-bold leading-tight sm:text-lg">{p.name}</h3>
-        {p.description && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground sm:text-sm">{p.description}</p>}
-        <div className="mt-2"><PriceBlock p={p} /></div>
-      </div>
-      <div className="flex flex-col justify-center" onClick={(e) => e.stopPropagation()}>
-        {qty === 0 ? (
-          <Button
-            type="button"
-            disabled={disabled}
-            onClick={() => cart.add({ id: p.id, name: p.name, price: eff, max: p.max_per_cart })}
-            className="rounded-full bg-primary px-4 font-bold text-primary-foreground hover:bg-primary/90"
-          >
-            Adicionar
-          </Button>
-        ) : (
-          <div className="flex items-center gap-1 rounded-full bg-secondary p-1">
-            <button onClick={() => cart.setQty(p.id, qty - 1)} className="h-8 w-8 flex items-center justify-center rounded-full bg-background hover:bg-background/70" aria-label="Diminuir">
-              <Minus className="h-4 w-4" />
-            </button>
-            <span className="w-6 text-center font-black">{qty}</span>
-            <button
-              disabled={reachedMax}
-              onClick={() => cart.add({ id: p.id, name: p.name, price: eff, max: p.max_per_cart })}
-              className="h-8 w-8 flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40"
-              aria-label="Aumentar"
-            >
-              <Plus className="h-4 w-4" />
-            </button>
-          </div>
-        )}
       </div>
     </article>
   );
