@@ -1,65 +1,41 @@
-## Lista de alterações que farei
+## Situação atual
 
-### 1. Tema visual — branco, cinza e roxo claro (pastel)
-- Atualizar tokens em `src/styles.css`: fundo branco/cinza claro, primary em roxo pastel, accent em lavanda. Manter contraste para UI/UX.
+Boa notícia: o backend **já está configurado como você quer**.
 
-### 2. Botão "Limpar" no carrinho
-- Adicionar botão no `CartDrawer` que chama `cart.clear()` com confirmação.
+- A tabela `products` tem política RLS `Products are public` (SELECT liberado para `anon` e `authenticated`).
+- A tabela `categories` tem política RLS `Categories are public` (SELECT liberado para `anon` e `authenticated`).
+- Não existem múltiplos bancos por administrador — o Lovable Cloud usa **um único banco compartilhado**, então qualquer admin já vê/edita os mesmos produtos e categorias. O CRUD já é global e único.
+- A página inicial (`src/routes/index.tsx`) faz a consulta sem exigir login.
 
-### 3. Botões de visualização (Grade/Lista) corrigidos
-- Hoje os dois modos são variações em grid (compacto/confortável). Vou trocar para **Grade** (2+ colunas) e **Lista** (1 coluna, layout horizontal com imagem à esquerda).
+Ou seja, produtos e categorias **já deveriam aparecer** para qualquer visitante (não logado). Se na prática não estão aparecendo, o problema é em outro lugar — provavelmente **imagens** (bucket privado) ou algum erro silencioso na consulta.
 
-### 4. Pop-up de detalhes do produto
-- Modal ao clicar no card mostrando imagem grande, nome, descrição completa, preço (com promocional se houver), botão de adicionar/ajustar quantidade no carrinho.
+## O que vou fazer
 
-### 5. Preço promocional
-- Adicionar coluna `sale_price` (numeric, nullable) em `products` via migration.
-- Form do admin com campo "Preço promocional (opcional)".
-- Card e modal: quando houver `sale_price`, mostrar preço normal riscado e o promocional em destaque.
-- Etiqueta "PROMOÇÃO" no canto do card.
+### 1. Tornar o bucket `product-images` público
+Hoje o bucket é privado e o admin usa URLs assinadas com validade de 10 anos. Isso funciona, mas:
+- Imagens enviadas no passado podem ter URLs quebradas
+- Toda nova imagem depende de gerar URL assinada (mais frágil)
 
-### 6. "Sem estoque" mais visível na área do admin
-- Card do produto no admin recebe overlay/borda destacada e selo grande quando `in_stock = false`.
+Vou tornar o bucket público e adicionar política de SELECT pública. URLs ficam simples e permanentes (`getPublicUrl`). O upload de imagens vai usar a URL pública direta em vez de URL assinada.
 
-### 7. Bucket de imagens corrigido
-- Criar bucket público `product-images` para upload funcionar.
-- Políticas RLS: leitura pública; upload/delete somente para admins.
+### 2. Ajustar `uploadImage` no admin
+Trocar `createSignedUrl` por `getPublicUrl` no `src/routes/admin.tsx`.
 
-### 8. Painel "Administradores" completo
-- Listar todos os administradores (via novo server function que usa `supabaseAdmin` para buscar usuários auth + roles).
-- Permitir **criar**, **editar usuário/senha** e **excluir** administradores.
-- Proteção: o usuário `admin` é fixo e nunca pode ser excluído; sempre garantir pelo menos 1 admin.
-- Atualizar a senha do usuário `admin` para `adminpamelafortes` (migration/seed via server-side reset). O login `admin/admin` deixará de funcionar — passará a ser `admin/adminpamelafortes`.
+### 3. Verificar/garantir a página inicial pública
+Confirmar que `src/routes/index.tsx` mostra os produtos mesmo sem login (já está configurado assim, mas vou validar o fluxo de carregamento e tratar erro caso a consulta falhe — hoje um erro é silencioso e a tela fica vazia).
 
-### 9. Configuração do número de WhatsApp pelo admin
-- Criar tabela `app_settings` (key/value) com a chave `whatsapp_number`.
-- Seed inicial com `5545984311918`.
-- Aba/seção nova no painel admin: "Configurações" com campo para alterar o número.
-- `WhatsAppFloat` e `finalizar()` passam a ler o número dessa tabela (com fallback para o atual).
+### 4. Confirmação visual
+Após implementar, abrir a tela inicial em modo anônimo (preview) e verificar se os produtos aparecem com imagens.
 
-### 10. Mostrar apenas o nome do usuário (sem `@banquinha.local`)
-- No header do dashboard, exibir só a parte antes do `@` ("Logado como **admin**").
+## O que NÃO precisa de mudança
 
-### 11. Comunicação sempre em PT-BR
-- Memorizar essa preferência em `mem://~user`.
+- Não há nada a fazer no banco para "tornar CRUD global" — ele já é. Todos os admins enxergam e editam o mesmo catálogo.
+- Não preciso alterar políticas RLS de products/categories — já estão públicas para leitura e restritas a admins para escrita.
 
----
+## Detalhes técnicos
 
-## Detalhes técnicos (resumo)
+- Migração de storage: `UPDATE storage.buckets SET public = true WHERE id = 'product-images'` + política `CREATE POLICY "Public read product-images" ON storage.objects FOR SELECT TO public USING (bucket_id = 'product-images')`.
+- Upload no admin passa a usar `supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl`.
+- Tratamento de erro na home: exibir mensagem se `error` retornar das consultas (em vez de simplesmente ficar vazio).
 
-- **Migrations**: adicionar coluna `products.sale_price numeric NULL`; criar tabela `app_settings`; criar bucket `product-images` + políticas; reset de senha do `admin` será feito via server function (não via SQL).
-- **Server functions** novas em `src/lib/admin.functions.ts`:
-  - `listAdmins()` — lista user_id + email + username (via `supabaseAdmin.auth.admin.listUsers`).
-  - `updateAdmin({userId, user?, password?})` — atualiza email/senha; bloqueia editar username do `admin` fixo.
-  - `deleteAdmin({userId})` — bloqueia excluir o `admin` fixo; valida que ao menos 1 admin permanece.
-- **Login**: a senha do `admin` mudará. Removerei o mapeamento `admin/admin → admin123`. Você passará a entrar com `admin / adminpamelafortes`.
-- **Cards/Lista/Modal/Promoção**: alterações concentradas em `src/routes/index.tsx`.
-- **Tema**: ajuste somente em `src/styles.css` (tokens semânticos), sem trocar classes nos componentes.
-
----
-
-## Pontos que preciso confirmar antes de começar
-
-1. **Senha do admin**: confirma trocar para `adminpamelafortes` agora? (login atual `admin/admin` deixa de funcionar).
-2. **Modo Lista**: ok ser 1 coluna com imagem à esquerda + infos à direita + botão de adicionar?
-3. **Etiqueta de promoção**: cor sólida no canto superior esquerdo do card escrito "PROMOÇÃO" serve, ou prefere outro texto (ex: "OFERTA", "-X%")?
+Posso seguir?
