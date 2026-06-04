@@ -5,7 +5,7 @@ import { cart, useCart } from "@/lib/cart";
 import { brl, whatsappLink } from "@/lib/whatsapp";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, Minus, Trash2, ChevronDown } from "lucide-react";
+import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, Grid2X2, Rows3 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -34,6 +34,9 @@ function Index() {
   const [prods, setProds] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCat, setActiveCat] = useState<string | "all">("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"comfort" | "compact">("compact");
   const [cartOpen, setCartOpen] = useState(false);
   const items = useCart();
 
@@ -49,10 +52,15 @@ function Index() {
     })();
   }, []);
 
-  const filtered = useMemo(
-    () => (activeCat === "all" ? prods : prods.filter((p) => p.category_id === activeCat)),
-    [prods, activeCat]
-  );
+  const filtered = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("pt-BR");
+    return prods.filter((p) => {
+      const matchesCat = activeCat === "all" || p.category_id === activeCat;
+      const searchable = `${p.name} ${p.description ?? ""}`.toLocaleLowerCase("pt-BR");
+      const matchesSearch = !query || searchable.includes(query);
+      return matchesCat && matchesSearch;
+    });
+  }, [prods, activeCat, searchTerm]);
 
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
   const itemCount = items.reduce((s, i) => s + i.qty, 0);
