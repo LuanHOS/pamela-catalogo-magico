@@ -1,9 +1,10 @@
-import { whatsappLink } from "@/lib/whatsapp";
+import { useWhatsAppNumber, whatsappLink } from "@/lib/whatsapp";
 
 export function WhatsAppFloat() {
+  const number = useWhatsAppNumber();
   return (
     <a
-      href={whatsappLink("Olá Pâmela! Vim pelo catálogo da Banquinha 🌸")}
+      href={whatsappLink("Olá Pamela! Vim pelo catálogo da Banca 🌸", number)}
       target="_blank"
       rel="noreferrer"
       aria-label="Falar no WhatsApp"
