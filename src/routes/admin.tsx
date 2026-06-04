@@ -252,6 +252,7 @@ function ProductsPanel() {
   const [cats, setCats] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
 
   const refresh = useCallback(async () => {
     const [p, c] = await Promise.all([
@@ -271,9 +272,27 @@ function ProductsPanel() {
     refresh();
   }
 
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? prods.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.description ?? "").toLowerCase().includes(q),
+      )
+    : prods;
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar produto…"
+            className="pl-9"
+          />
+        </div>
         <Button onClick={() => { setEditing(null); setShowForm(true); }} className="rounded-full">
           <Plus className="mr-1 h-4 w-4" /> Novo produto
         </Button>
@@ -283,9 +302,13 @@ function ProductsPanel() {
         <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center text-muted-foreground">
           Nenhum produto ainda. Adicione o primeiro!
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center text-muted-foreground">
+          Nenhum produto encontrado para "{search}".
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {prods.map((p) => {
+          {filtered.map((p) => {
             const out = !p.in_stock;
             const promo = p.sale_price != null && Number(p.sale_price) > 0 && Number(p.sale_price) < Number(p.price);
             return (
@@ -296,18 +319,18 @@ function ProductsPanel() {
                   (out ? "border-destructive/60 ring-2 ring-destructive/30 bg-destructive/5" : "border-border")
                 }
               >
-                {out && (
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl">
-                    <span className="rounded-full bg-destructive px-3 py-1 text-xs font-black uppercase tracking-wide text-destructive-foreground shadow-lg">
-                      Sem estoque
-                    </span>
-                  </div>
-                )}
                 <div className={"h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-secondary " + (out ? "opacity-40" : "")}>
                   {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />}
                 </div>
                 <div className={"flex flex-1 flex-col " + (out ? "opacity-60" : "")}>
                   <div className="font-bold">{p.name}</div>
+                  {out && (
+                    <div className="mt-0.5">
+                      <span className="inline-block rounded-full bg-destructive px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-destructive-foreground">
+                        Sem estoque
+                      </span>
+                    </div>
+                  )}
                   <div className="text-sm">
                     {promo ? (
                       <>
@@ -319,14 +342,9 @@ function ProductsPanel() {
                       <span className="text-primary font-black">{brl(Number(p.price))}</span>
                     )}
                   </div>
-                  <div className="mt-auto flex items-center justify-between text-xs">
-                    <span className={out ? "font-bold text-destructive" : "text-accent-foreground"}>
-                      {out ? "SEM ESTOQUE" : "Em estoque"}
-                    </span>
-                    <div className="flex gap-1">
+                  <div className="mt-auto flex items-center justify-end gap-1 text-xs">
                       <button onClick={() => { setEditing(p); setShowForm(true); }} className="rounded-full p-1.5 hover:bg-secondary"><Pencil className="h-3.5 w-3.5" /></button>
                       <button onClick={() => del(p)} className="rounded-full p-1.5 hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></button>
-                    </div>
                   </div>
                 </div>
               </div>
