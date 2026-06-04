@@ -5,7 +5,7 @@ import { cart, useCart } from "@/lib/cart";
 import { brl, useWhatsAppNumber, whatsappLink } from "@/lib/whatsapp";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, LayoutGrid, List, X, Tag } from "lucide-react";
+import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, X, Tag } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
