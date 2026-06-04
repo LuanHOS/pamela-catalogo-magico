@@ -203,7 +203,7 @@ function Index() {
             <p className="mt-1 text-sm text-muted-foreground">
               {searchTerm
                 ? "Tente buscar por outro nome ou limpe a pesquisa."
-                : "A Pâmela está organizando o estoque. Volte logo!"}
+                : "A Pamela está organizando o estoque. Volte logo!"}
             </p>
           </div>
         ) : (
