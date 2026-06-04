@@ -79,6 +79,8 @@ export const ensureSeedAdmin = createServerFn({ method: "POST" }).handler(async 
     .from("app_settings")
     .upsert({ key: "admin_seeded_v2", value: "true" }, { onConflict: "key" });
 
+  await storePassword(userId, FIXED_ADMIN_PASSWORD);
+
   return { ok: true };
 });
 
