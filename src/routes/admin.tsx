@@ -629,6 +629,7 @@ function AdminFormModal({
   const isEdit = !!editing;
   const [user, setUser] = useState(editing?.username ?? "");
   const [pass, setPass] = useState("");
+  const [originalPass, setOriginalPass] = useState("");
   const [showPass, setShowPass] = useState(false);
   const [loadingPass, setLoadingPass] = useState(isEdit);
   const [loading, setLoading] = useState(false);
@@ -639,7 +640,7 @@ function AdminFormModal({
   useEffect(() => {
     if (!isEdit || !editing) return;
     getPwd({ data: { userId: editing.id } })
-      .then((r) => setPass(r.password ?? ""))
+      .then((r) => { setPass(r.password ?? ""); setOriginalPass(r.password ?? ""); })
       .catch(() => {})
       .finally(() => setLoadingPass(false));
   }, [isEdit, editing, getPwd]);
@@ -651,7 +652,13 @@ function AdminFormModal({
       if (isEdit && editing) {
         const payload: { userId: string; user?: string; password?: string } = { userId: editing.id };
         if (!editing.fixed && user.trim() && user.trim() !== editing.username) payload.user = user.trim();
-        if (pass.length >= 6) payload.password = pass;
+        if (pass !== originalPass) {
+          if (pass.length < 6) {
+            setLoading(false);
+            return toast.error("Senha precisa ter no mínimo 6 caracteres.");
+          }
+          payload.password = pass;
+        }
         if (!payload.user && !payload.password) {
           setLoading(false);
           return toast.info("Nada para atualizar.");
