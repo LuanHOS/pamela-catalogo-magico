@@ -47,7 +47,6 @@ function Index() {
   const [activeCat, setActiveCat] = useState<string | "all">("all");
   const [searchInput, setSearchInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [cartOpen, setCartOpen] = useState(false);
   const [detail, setDetail] = useState<Product | null>(null);
   const items = useCart();
