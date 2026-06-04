@@ -191,14 +191,6 @@ function Index() {
                 {c.name}
               </CatChip>
             ))}
-            <div className="ml-auto flex shrink-0 rounded-full bg-secondary p-1">
-              <ViewButton active={viewMode === "grid"} onClick={() => setViewMode("grid")} label="Grade">
-                <LayoutGrid className="h-4 w-4" />
-              </ViewButton>
-              <ViewButton active={viewMode === "list"} onClick={() => setViewMode("list")} label="Lista">
-                <List className="h-4 w-4" />
-              </ViewButton>
-            </div>
           </div>
         </div>
       </div>
