@@ -259,7 +259,34 @@ function CatChip({
   );
 }
 
-function ProductCard({ p }: { p: Product }) {
+function ViewButton({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={
+        "flex h-9 w-9 items-center justify-center rounded-full transition " +
+        (active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+function ProductCard({ p, compact }: { p: Product; compact: boolean }) {
   const items = useCart();
   const inCart = items.find((i) => i.id === p.id);
   const qty = inCart?.qty ?? 0;
@@ -267,8 +294,8 @@ function ProductCard({ p }: { p: Product }) {
   const reachedMax = qty >= p.max_per_cart;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:shadow-md">
-      <div className="relative aspect-square overflow-hidden bg-secondary">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md">
+      <div className={(compact ? "aspect-[4/3]" : "aspect-square") + " relative overflow-hidden bg-secondary"}>
         {p.image_url ? (
           <img
             src={p.image_url}
@@ -287,16 +314,16 @@ function ProductCard({ p }: { p: Product }) {
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="font-display text-lg font-bold leading-tight text-card-foreground">
+      <div className={(compact ? "p-3" : "p-4") + " flex flex-1 flex-col"}>
+        <h3 className={(compact ? "text-sm" : "text-lg") + " line-clamp-2 font-display font-bold leading-tight text-card-foreground"}>
           {p.name}
         </h3>
         {p.description && (
-          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{p.description}</p>
+          <p className={(compact ? "line-clamp-2 text-xs" : "line-clamp-3 text-sm") + " mt-1 text-muted-foreground"}>{p.description}</p>
         )}
-        <div className="mt-3 text-2xl font-black text-primary">{brl(Number(p.price))}</div>
+        <div className={(compact ? "mt-2 text-lg" : "mt-3 text-2xl") + " font-black text-primary"}>{brl(Number(p.price))}</div>
 
-        <div className="mt-auto pt-4">
+        <div className={(compact ? "pt-3" : "pt-4") + " mt-auto"}>
           {qty === 0 ? (
             <Button
               type="button"
@@ -304,15 +331,15 @@ function ProductCard({ p }: { p: Product }) {
               onClick={() =>
                 cart.add({ id: p.id, name: p.name, price: Number(p.price), max: p.max_per_cart })
               }
-              className="w-full rounded-full bg-primary py-6 text-base font-bold text-primary-foreground hover:bg-primary/90"
+              className={(compact ? "h-10 text-xs" : "py-6 text-base") + " w-full rounded-full bg-primary font-bold text-primary-foreground hover:bg-primary/90"}
             >
-              Botar no Carrinho
+              {compact ? "Adicionar" : "Botar no Carrinho"}
             </Button>
           ) : (
-            <div className="flex items-center justify-between gap-2 rounded-full bg-secondary p-1">
+            <div className="flex items-center justify-between gap-1 rounded-full bg-secondary p-1">
               <button
                 onClick={() => cart.setQty(p.id, qty - 1)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-foreground hover:bg-background/70"
+                className={(compact ? "h-8 w-8" : "h-10 w-10") + " flex items-center justify-center rounded-full bg-background text-foreground hover:bg-background/70"}
                 aria-label="Diminuir"
               >
                 <Minus className="h-4 w-4" />
@@ -328,7 +355,7 @@ function ProductCard({ p }: { p: Product }) {
                     max: p.max_per_cart,
                   })
                 }
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40"
+                className={(compact ? "h-8 w-8" : "h-10 w-10") + " flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40"}
                 aria-label="Aumentar"
               >
                 <Plus className="h-4 w-4" />
