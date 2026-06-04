@@ -210,7 +210,25 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
+    await supabaseAdmin.from("app_settings").delete().eq("key", pwdKey(data.userId));
     return { ok: true };
+  });
+
+/* ---------- Obter senha de um administrador ---------- */
+const getPasswordSchema = z.object({ userId: z.string().uuid() });
+
+export const getAdminPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => getPasswordSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertCallerIsAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("app_settings")
+      .select("value")
+      .eq("key", pwdKey(data.userId))
+      .maybeSingle();
+    return { password: row?.value ?? "" };
   });
 
 /* ---------- Configuração do WhatsApp ---------- */
