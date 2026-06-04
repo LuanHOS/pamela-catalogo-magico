@@ -6,6 +6,7 @@ import {
   createAdminUser,
   deleteAdminUser,
   ensureSeedAdmin,
+  getAdminPassword,
   listAdmins,
   updateAdminUser,
   updateWhatsAppNumber,
@@ -17,7 +18,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast, Toaster } from "sonner";
-import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, UserPlus, Phone, ShieldAlert } from "lucide-react";
+import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, UserPlus, Phone, ShieldAlert, Search } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Administração — Banca da Pamela" }] }),
@@ -251,6 +252,7 @@ function ProductsPanel() {
   const [cats, setCats] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [search, setSearch] = useState("");
 
   const refresh = useCallback(async () => {
     const [p, c] = await Promise.all([
@@ -270,9 +272,27 @@ function ProductsPanel() {
     refresh();
   }
 
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? prods.filter(
+        (p) =>
+          p.name.toLowerCase().includes(q) ||
+          (p.description ?? "").toLowerCase().includes(q),
+      )
+    : prods;
+
   return (
     <div className="space-y-4">
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1 sm:max-w-sm">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar produto…"
+            className="pl-9"
+          />
+        </div>
         <Button onClick={() => { setEditing(null); setShowForm(true); }} className="rounded-full">
           <Plus className="mr-1 h-4 w-4" /> Novo produto
         </Button>
@@ -282,9 +302,13 @@ function ProductsPanel() {
         <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center text-muted-foreground">
           Nenhum produto ainda. Adicione o primeiro!
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-border bg-card p-12 text-center text-muted-foreground">
+          Nenhum produto encontrado para "{search}".
+        </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {prods.map((p) => {
+          {filtered.map((p) => {
             const out = !p.in_stock;
             const promo = p.sale_price != null && Number(p.sale_price) > 0 && Number(p.sale_price) < Number(p.price);
             return (
@@ -295,18 +319,18 @@ function ProductsPanel() {
                   (out ? "border-destructive/60 ring-2 ring-destructive/30 bg-destructive/5" : "border-border")
                 }
               >
-                {out && (
-                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl">
-                    <span className="rounded-full bg-destructive px-3 py-1 text-xs font-black uppercase tracking-wide text-destructive-foreground shadow-lg">
-                      Sem estoque
-                    </span>
-                  </div>
-                )}
                 <div className={"h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-secondary " + (out ? "opacity-40" : "")}>
                   {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />}
                 </div>
                 <div className={"flex flex-1 flex-col " + (out ? "opacity-60" : "")}>
                   <div className="font-bold">{p.name}</div>
+                  {out && (
+                    <div className="mt-0.5">
+                      <span className="inline-block rounded-full bg-destructive px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-destructive-foreground">
+                        Sem estoque
+                      </span>
+                    </div>
+                  )}
                   <div className="text-sm">
                     {promo ? (
                       <>
@@ -318,14 +342,9 @@ function ProductsPanel() {
                       <span className="text-primary font-black">{brl(Number(p.price))}</span>
                     )}
                   </div>
-                  <div className="mt-auto flex items-center justify-between text-xs">
-                    <span className={out ? "font-bold text-destructive" : "text-accent-foreground"}>
-                      {out ? "SEM ESTOQUE" : "Em estoque"}
-                    </span>
-                    <div className="flex gap-1">
+                  <div className="mt-auto flex items-center justify-end gap-1 text-xs">
                       <button onClick={() => { setEditing(p); setShowForm(true); }} className="rounded-full p-1.5 hover:bg-secondary"><Pencil className="h-3.5 w-3.5" /></button>
                       <button onClick={() => del(p)} className="rounded-full p-1.5 hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></button>
-                    </div>
                   </div>
                 </div>
               </div>
@@ -375,8 +394,17 @@ function ProductForm({
     const path = `${crypto.randomUUID()}.${ext}`;
     const { error } = await supabase.storage.from("product-images").upload(path, file, { upsert: false });
     if (error) { toast.error(error.message); setUploading(false); return; }
-    const { data } = supabase.storage.from("product-images").getPublicUrl(path);
-    setImageUrl(data.publicUrl);
+    // Bucket é privado (políticas do workspace bloqueiam público), usamos URL assinada de longa duração.
+    const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+    const { data, error: sErr } = await supabase.storage
+      .from("product-images")
+      .createSignedUrl(path, TEN_YEARS);
+    if (sErr || !data?.signedUrl) {
+      toast.error(sErr?.message ?? "Falha ao gerar URL da imagem");
+      setUploading(false);
+      return;
+    }
+    setImageUrl(data.signedUrl);
     setUploading(false);
   }
 
@@ -601,9 +629,21 @@ function AdminFormModal({
   const isEdit = !!editing;
   const [user, setUser] = useState(editing?.username ?? "");
   const [pass, setPass] = useState("");
+  const [originalPass, setOriginalPass] = useState("");
+  const [showPass, setShowPass] = useState(false);
+  const [loadingPass, setLoadingPass] = useState(isEdit);
   const [loading, setLoading] = useState(false);
   const create = useServerFn(createAdminUser);
   const update = useServerFn(updateAdminUser);
+  const getPwd = useServerFn(getAdminPassword);
+
+  useEffect(() => {
+    if (!isEdit || !editing) return;
+    getPwd({ data: { userId: editing.id } })
+      .then((r) => { setPass(r.password ?? ""); setOriginalPass(r.password ?? ""); })
+      .catch(() => {})
+      .finally(() => setLoadingPass(false));
+  }, [isEdit, editing, getPwd]);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -612,7 +652,13 @@ function AdminFormModal({
       if (isEdit && editing) {
         const payload: { userId: string; user?: string; password?: string } = { userId: editing.id };
         if (!editing.fixed && user.trim() && user.trim() !== editing.username) payload.user = user.trim();
-        if (pass.length >= 6) payload.password = pass;
+        if (pass !== originalPass) {
+          if (pass.length < 6) {
+            setLoading(false);
+            return toast.error("Senha precisa ter no mínimo 6 caracteres.");
+          }
+          payload.password = pass;
+        }
         if (!payload.user && !payload.password) {
           setLoading(false);
           return toast.info("Nada para atualizar.");
@@ -656,8 +702,29 @@ function AdminFormModal({
           )}
         </div>
         <div>
-          <Label htmlFor="ap">{isEdit ? "Nova senha (deixe em branco para manter)" : "Senha"}</Label>
-          <Input id="ap" type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="mínimo 6 caracteres" />
+          <Label htmlFor="ap">Senha</Label>
+          <div className="relative">
+            <Input
+              id="ap"
+              type={showPass ? "text" : "password"}
+              value={pass}
+              onChange={(e) => setPass(e.target.value)}
+              placeholder={loadingPass ? "Carregando…" : "mínimo 6 caracteres"}
+              className="pr-16"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPass((v) => !v)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-1 text-xs font-bold text-muted-foreground hover:bg-secondary"
+            >
+              {showPass ? "Ocultar" : "Mostrar"}
+            </button>
+          </div>
+          {isEdit && (
+            <p className="mt-1 text-xs text-muted-foreground">
+              Senha atual exibida acima. Edite para alterar.
+            </p>
+          )}
         </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose} className="rounded-full">Cancelar</Button>

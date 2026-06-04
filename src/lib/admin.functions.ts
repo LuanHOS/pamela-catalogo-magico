@@ -25,6 +25,17 @@ async function assertCallerIsAdmin(context: { supabase: any; userId: string }) {
   if (!data) throw new Error("Sem permissão de administrador.");
 }
 
+function pwdKey(userId: string) {
+  return `admin_pwd:${userId}`;
+}
+
+async function storePassword(userId: string, password: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  await supabaseAdmin
+    .from("app_settings")
+    .upsert({ key: pwdKey(userId), value: password }, { onConflict: "key" });
+}
+
 /* ---------- Seed do admin fixo (idempotente, sem auth) ---------- */
 export const ensureSeedAdmin = createServerFn({ method: "POST" }).handler(async () => {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -32,7 +43,7 @@ export const ensureSeedAdmin = createServerFn({ method: "POST" }).handler(async 
   const { data: sentinel } = await supabaseAdmin
     .from("app_settings")
     .select("value")
-    .eq("key", "admin_seeded_v2")
+    .eq("key", "admin_seeded_v3")
     .maybeSingle();
 
   if (sentinel?.value === "true") return { ok: true, skipped: true };
@@ -66,7 +77,9 @@ export const ensureSeedAdmin = createServerFn({ method: "POST" }).handler(async 
 
   await supabaseAdmin
     .from("app_settings")
-    .upsert({ key: "admin_seeded_v2", value: "true" }, { onConflict: "key" });
+    .upsert({ key: "admin_seeded_v3", value: "true" }, { onConflict: "key" });
+
+  await storePassword(userId, FIXED_ADMIN_PASSWORD);
 
   return { ok: true };
 });
@@ -130,6 +143,8 @@ export const createAdminUser = createServerFn({ method: "POST" })
       .upsert({ user_id: created.user.id, role: "admin" }, { onConflict: "user_id,role" });
     if (roleErr) throw new Error(roleErr.message);
 
+    await storePassword(created.user.id, data.password);
+
     return { id: created.user.id, email };
   });
 
@@ -164,6 +179,7 @@ export const updateAdminUser = createServerFn({ method: "POST" })
 
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, patch);
     if (error) throw new Error(error.message);
+    if (patch.password) await storePassword(data.userId, patch.password);
     return { ok: true };
   });
 
@@ -194,7 +210,25 @@ export const deleteAdminUser = createServerFn({ method: "POST" })
     await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
     const { error } = await supabaseAdmin.auth.admin.deleteUser(data.userId);
     if (error) throw new Error(error.message);
+    await supabaseAdmin.from("app_settings").delete().eq("key", pwdKey(data.userId));
     return { ok: true };
+  });
+
+/* ---------- Obter senha de um administrador ---------- */
+const getPasswordSchema = z.object({ userId: z.string().uuid() });
+
+export const getAdminPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => getPasswordSchema.parse(input))
+  .handler(async ({ data, context }) => {
+    await assertCallerIsAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: row } = await supabaseAdmin
+      .from("app_settings")
+      .select("value")
+      .eq("key", pwdKey(data.userId))
+      .maybeSingle();
+    return { password: row?.value ?? "" };
   });
 
 /* ---------- Configuração do WhatsApp ---------- */
