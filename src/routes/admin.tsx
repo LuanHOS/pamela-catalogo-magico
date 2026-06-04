@@ -1,16 +1,23 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { createAdminUser } from "@/lib/admin.functions";
-import { brl } from "@/lib/whatsapp";
+import {
+  createAdminUser,
+  deleteAdminUser,
+  ensureSeedAdmin,
+  listAdmins,
+  updateAdminUser,
+  updateWhatsAppNumber,
+} from "@/lib/admin.functions";
+import { brl, DEFAULT_WHATSAPP_NUMBER } from "@/lib/whatsapp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { toast, Toaster } from "sonner";
-import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, UserPlus } from "lucide-react";
+import { ArrowLeft, LogOut, Plus, Pencil, Trash2, Upload, UserPlus, Phone, ShieldAlert } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({ meta: [{ title: "Administração — Banca da Pamela" }] }),
@@ -25,18 +32,25 @@ type Product = {
   description: string | null;
   image_url: string | null;
   price: number;
+  sale_price: number | null;
   cost: number;
   in_stock: boolean;
   max_per_cart: number;
   sort_order: number;
 };
 
+function usernameFromEmail(email: string) {
+  return email.split("@")[0] ?? email;
+}
+
 function AdminPage() {
   const [session, setSession] = useState<{ userId: string; email: string } | null>(null);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [checking, setChecking] = useState(true);
+  const seed = useServerFn(ensureSeedAdmin);
 
   useEffect(() => {
+    seed().catch(() => {});
     const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
       setSession(s ? { userId: s.user.id, email: s.user.email ?? "" } : null);
     });
@@ -45,7 +59,7 @@ function AdminPage() {
       setChecking(false);
     });
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [seed]);
 
   useEffect(() => {
     if (!session) { setIsAdmin(null); return; }
@@ -93,8 +107,7 @@ function LoginForm() {
     setLoading(true);
     const user = email.trim();
     const fullEmail = user.includes("@") ? user : `${user}@banquinha.local`;
-    const safePassword = user.toLowerCase() === "admin" && password === "admin" ? "admin123" : password;
-    const { error } = await supabase.auth.signInWithPassword({ email: fullEmail, password: safePassword });
+    const { error } = await supabase.auth.signInWithPassword({ email: fullEmail, password });
     setLoading(false);
     if (error) toast.error("Login inválido", { description: error.message });
   }
@@ -128,7 +141,7 @@ function LoginForm() {
 function NotAdmin({ email }: { email: string }) {
   return (
     <div className="mx-auto max-w-md p-10 text-center">
-      <p className="text-lg font-bold">Olá, {email}</p>
+      <p className="text-lg font-bold">Olá, {usernameFromEmail(email)}</p>
       <p className="mt-2 text-sm text-muted-foreground">
         Sua conta não tem permissão de administrador.
       </p>
@@ -138,30 +151,30 @@ function NotAdmin({ email }: { email: string }) {
 }
 
 function Dashboard({ email }: { email: string }) {
-  const [tab, setTab] = useState<"products" | "categories" | "admins">("products");
+  const [tab, setTab] = useState<"products" | "categories" | "admins" | "settings">("products");
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="font-display text-3xl font-black">Gerenciar Catálogo</h1>
-          <p className="text-sm text-muted-foreground">Logado como {email}</p>
+          <p className="text-sm text-muted-foreground">Logado como <span className="font-bold text-foreground">{usernameFromEmail(email)}</span></p>
         </div>
         <Button variant="outline" onClick={() => supabase.auth.signOut()} className="rounded-full">
           <LogOut className="mr-2 h-4 w-4" /> Sair
         </Button>
       </div>
 
-      <div className="mb-6 flex gap-2 border-b border-border">
-        {(["products", "categories", "admins"] as const).map((t) => (
+      <div className="mb-6 flex gap-2 border-b border-border overflow-x-auto">
+        {(["products", "categories", "admins", "settings"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             className={
-              "border-b-2 px-4 py-2 text-sm font-bold transition " +
+              "whitespace-nowrap border-b-2 px-4 py-2 text-sm font-bold transition " +
               (tab === t ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground")
             }
           >
-            {t === "products" ? "Produtos" : t === "categories" ? "Categorias" : "Administradores"}
+            {t === "products" ? "Produtos" : t === "categories" ? "Categorias" : t === "admins" ? "Administradores" : "Configurações"}
           </button>
         ))}
       </div>
@@ -169,6 +182,7 @@ function Dashboard({ email }: { email: string }) {
       {tab === "products" && <ProductsPanel />}
       {tab === "categories" && <CategoriesPanel />}
       {tab === "admins" && <AdminsPanel />}
+      {tab === "settings" && <SettingsPanel />}
     </div>
   );
 }
@@ -178,11 +192,11 @@ function CategoriesPanel() {
   const [cats, setCats] = useState<Category[]>([]);
   const [name, setName] = useState("");
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const { data } = await supabase.from("categories").select("*").order("sort_order");
     setCats(data ?? []);
-  }
-  useEffect(() => { refresh(); }, []);
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -238,15 +252,15 @@ function ProductsPanel() {
   const [editing, setEditing] = useState<Product | null>(null);
   const [showForm, setShowForm] = useState(false);
 
-  async function refresh() {
+  const refresh = useCallback(async () => {
     const [p, c] = await Promise.all([
       supabase.from("products").select("*").order("sort_order"),
       supabase.from("categories").select("*").order("sort_order"),
     ]);
     setProds((p.data ?? []) as Product[]);
     setCats(c.data ?? []);
-  }
-  useEffect(() => { refresh(); }, []);
+  }, []);
+  useEffect(() => { refresh(); }, [refresh]);
 
   async function del(p: Product) {
     if (!confirm(`Remover "${p.name}"?`)) return;
@@ -270,26 +284,53 @@ function ProductsPanel() {
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {prods.map((p) => (
-            <div key={p.id} className="flex gap-3 rounded-xl border border-border bg-card p-3">
-              <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-secondary">
-                {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />}
-              </div>
-              <div className="flex flex-1 flex-col">
-                <div className="font-bold">{p.name}</div>
-                <div className="text-sm text-primary font-black">{brl(Number(p.price))}</div>
-                <div className="mt-auto flex items-center justify-between text-xs">
-                  <span className={p.in_stock ? "text-accent-foreground" : "text-destructive"}>
-                    {p.in_stock ? "Em estoque" : "Sem estoque"}
-                  </span>
-                  <div className="flex gap-1">
-                    <button onClick={() => { setEditing(p); setShowForm(true); }} className="rounded-full p-1.5 hover:bg-secondary"><Pencil className="h-3.5 w-3.5" /></button>
-                    <button onClick={() => del(p)} className="rounded-full p-1.5 hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></button>
+          {prods.map((p) => {
+            const out = !p.in_stock;
+            const promo = p.sale_price != null && Number(p.sale_price) > 0 && Number(p.sale_price) < Number(p.price);
+            return (
+              <div
+                key={p.id}
+                className={
+                  "relative flex gap-3 rounded-xl border bg-card p-3 transition " +
+                  (out ? "border-destructive/60 ring-2 ring-destructive/30 bg-destructive/5" : "border-border")
+                }
+              >
+                {out && (
+                  <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-xl">
+                    <span className="rounded-full bg-destructive px-3 py-1 text-xs font-black uppercase tracking-wide text-destructive-foreground shadow-lg">
+                      Sem estoque
+                    </span>
+                  </div>
+                )}
+                <div className={"h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-secondary " + (out ? "opacity-40" : "")}>
+                  {p.image_url && <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" />}
+                </div>
+                <div className={"flex flex-1 flex-col " + (out ? "opacity-60" : "")}>
+                  <div className="font-bold">{p.name}</div>
+                  <div className="text-sm">
+                    {promo ? (
+                      <>
+                        <span className="text-muted-foreground line-through mr-1">{brl(Number(p.price))}</span>
+                        <span className="text-primary font-black">{brl(Number(p.sale_price))}</span>
+                        <span className="ml-1 rounded-full bg-accent px-1.5 py-0.5 text-[10px] font-black uppercase text-accent-foreground">Promo</span>
+                      </>
+                    ) : (
+                      <span className="text-primary font-black">{brl(Number(p.price))}</span>
+                    )}
+                  </div>
+                  <div className="mt-auto flex items-center justify-between text-xs">
+                    <span className={out ? "font-bold text-destructive" : "text-accent-foreground"}>
+                      {out ? "SEM ESTOQUE" : "Em estoque"}
+                    </span>
+                    <div className="flex gap-1">
+                      <button onClick={() => { setEditing(p); setShowForm(true); }} className="rounded-full p-1.5 hover:bg-secondary"><Pencil className="h-3.5 w-3.5" /></button>
+                      <button onClick={() => del(p)} className="rounded-full p-1.5 hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5 text-destructive" /></button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -319,6 +360,7 @@ function ProductForm({
   const [name, setName] = useState(product?.name ?? "");
   const [description, setDescription] = useState(product?.description ?? "");
   const [price, setPrice] = useState(product ? String(product.price) : "");
+  const [salePrice, setSalePrice] = useState(product?.sale_price != null ? String(product.sale_price) : "");
   const [cost, setCost] = useState(product ? String(product.cost) : "");
   const [maxPerCart, setMaxPerCart] = useState(product ? String(product.max_per_cart) : "10");
   const [inStock, setInStock] = useState(product?.in_stock ?? true);
@@ -341,10 +383,12 @@ function ProductForm({
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    const saleNum = salePrice.trim() ? Number(salePrice) : null;
     const payload = {
       name: name.trim(),
       description: description.trim() || null,
       price: Number(price) || 0,
+      sale_price: saleNum && saleNum > 0 ? saleNum : null,
       cost: Number(cost) || 0,
       max_per_cart: Math.max(1, parseInt(maxPerCart || "10", 10)),
       in_stock: inStock,
@@ -376,7 +420,7 @@ function ProductForm({
             <Label>Foto</Label>
             <div className="mt-1 flex items-center gap-3">
               <div className="h-24 w-24 overflow-hidden rounded-lg border border-border bg-secondary">
-                {imageUrl && <img src={imageUrl} className="h-full w-full object-cover" />}
+                {imageUrl && <img src={imageUrl} className="h-full w-full object-cover" alt="" />}
               </div>
               <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-border bg-card px-4 py-2 text-sm font-semibold hover:bg-secondary">
                 <Upload className="h-4 w-4" />
@@ -419,6 +463,10 @@ function ProductForm({
             <Input type="number" step="0.01" value={price} onChange={(e) => setPrice(e.target.value)} required />
           </div>
           <div>
+            <Label>Preço promocional (R$) <span className="text-xs text-muted-foreground">opcional</span></Label>
+            <Input type="number" step="0.01" value={salePrice} onChange={(e) => setSalePrice(e.target.value)} placeholder="deixe vazio se sem promoção" />
+          </div>
+          <div>
             <Label>Custo interno (R$)</Label>
             <Input type="number" step="0.01" value={cost} onChange={(e) => setCost(e.target.value)} />
           </div>
@@ -443,50 +491,243 @@ function ProductForm({
 }
 
 /* ---------- Admins ---------- */
-function AdminsPanel() {
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [loading, setLoading] = useState(false);
-  const createAdmin = useServerFn(createAdminUser);
+type AdminRow = { id: string; email: string; username: string; fixed: boolean };
 
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    if (!user.trim() || pass.length < 6) {
-      return toast.error("Usuário e senha (mín. 6 caracteres) obrigatórios");
-    }
+function AdminsPanel() {
+  const [admins, setAdmins] = useState<AdminRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [editing, setEditing] = useState<AdminRow | null>(null);
+
+  const list = useServerFn(listAdmins);
+  const del = useServerFn(deleteAdminUser);
+
+  const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      await createAdmin({ data: { user, password: pass } });
+      const res = await list();
+      setAdmins(res.admins);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao carregar");
+    } finally {
       setLoading(false);
-      toast.success(`Administrador "${user}" criado`);
-      setUser("");
-      setPass("");
-    } catch (error) {
-      setLoading(false);
-      toast.error(error instanceof Error ? error.message : "Não foi possível criar o usuário");
+    }
+  }, [list]);
+
+  useEffect(() => { refresh(); }, [refresh]);
+
+  async function remove(a: AdminRow) {
+    if (a.fixed) return toast.error("O usuário 'admin' é fixo e não pode ser excluído.");
+    if (!confirm(`Excluir administrador "${a.username}"?`)) return;
+    try {
+      await del({ data: { userId: a.id } });
+      toast.success("Administrador removido");
+      refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao remover");
     }
   }
 
   return (
     <div className="space-y-4">
-      <div className="rounded-xl border border-border bg-card p-4">
-        <h3 className="font-display text-lg font-black">Criar novo administrador</h3>
-        <p className="mt-1 text-sm text-muted-foreground">
-          O novo usuário poderá entrar na Área do Administrador com este login e senha.
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          <ShieldAlert className="mr-1 inline h-4 w-4" />
+          O usuário <code className="rounded bg-secondary px-1.5 py-0.5">admin</code> é fixo e não pode ser excluído nem renomeado.
         </p>
-        <form onSubmit={create} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
-          <div>
-            <Label htmlFor="nu">Usuário</Label>
-            <Input id="nu" value={user} onChange={(e) => setUser(e.target.value)} placeholder="ex: pamela" />
-          </div>
-          <div>
-            <Label htmlFor="np">Senha</Label>
-            <Input id="np" type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="mínimo 6 caracteres" />
-          </div>
-          <Button type="submit" disabled={loading} className="self-end rounded-full">
-            <UserPlus className="mr-1 h-4 w-4" /> Criar
+        <Button onClick={() => setShowCreate(true)} className="rounded-full">
+          <UserPlus className="mr-1 h-4 w-4" /> Novo administrador
+        </Button>
+      </div>
+
+      <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+        {loading && <li className="p-6 text-center text-muted-foreground">Carregando…</li>}
+        {!loading && admins.length === 0 && <li className="p-6 text-center text-muted-foreground">Nenhum administrador.</li>}
+        {admins.map((a) => (
+          <li key={a.id} className="flex items-center justify-between gap-3 p-4">
+            <div>
+              <div className="font-semibold flex items-center gap-2">
+                {a.username}
+                {a.fixed && <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-black uppercase text-primary">Fixo</span>}
+              </div>
+              <div className="text-xs text-muted-foreground">{a.email}</div>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" onClick={() => setEditing(a)} title="Editar"><Pencil className="h-4 w-4" /></Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => remove(a)}
+                disabled={a.fixed}
+                title={a.fixed ? "Não pode ser excluído" : "Excluir"}
+              >
+                <Trash2 className={"h-4 w-4 " + (a.fixed ? "opacity-30" : "text-destructive")} />
+              </Button>
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {showCreate && (
+        <AdminFormModal
+          title="Novo administrador"
+          onClose={() => setShowCreate(false)}
+          onSaved={() => { setShowCreate(false); refresh(); }}
+        />
+      )}
+      {editing && (
+        <AdminFormModal
+          title={`Editar "${editing.username}"`}
+          editing={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); refresh(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function AdminFormModal({
+  title,
+  editing,
+  onClose,
+  onSaved,
+}: {
+  title: string;
+  editing?: AdminRow;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const isEdit = !!editing;
+  const [user, setUser] = useState(editing?.username ?? "");
+  const [pass, setPass] = useState("");
+  const [loading, setLoading] = useState(false);
+  const create = useServerFn(createAdminUser);
+  const update = useServerFn(updateAdminUser);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      if (isEdit && editing) {
+        const payload: { userId: string; user?: string; password?: string } = { userId: editing.id };
+        if (!editing.fixed && user.trim() && user.trim() !== editing.username) payload.user = user.trim();
+        if (pass.length >= 6) payload.password = pass;
+        if (!payload.user && !payload.password) {
+          setLoading(false);
+          return toast.info("Nada para atualizar.");
+        }
+        await update({ data: payload });
+        toast.success("Administrador atualizado");
+      } else {
+        if (!user.trim() || pass.length < 6) {
+          setLoading(false);
+          return toast.error("Usuário e senha (mín. 6 caracteres) obrigatórios");
+        }
+        await create({ data: { user: user.trim(), password: pass } });
+        toast.success(`Administrador "${user}" criado`);
+      }
+      onSaved();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/50 p-0 sm:items-center sm:p-6">
+      <form onSubmit={submit} className="w-full max-w-md space-y-4 rounded-t-2xl bg-background p-6 shadow-2xl sm:rounded-2xl">
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-xl font-black">{title}</h3>
+          <button type="button" onClick={onClose} className="text-sm text-muted-foreground">Fechar</button>
+        </div>
+        <div>
+          <Label htmlFor="au">Usuário</Label>
+          <Input
+            id="au"
+            value={user}
+            onChange={(e) => setUser(e.target.value)}
+            placeholder="ex: pamela"
+            disabled={isEdit && editing?.fixed}
+          />
+          {isEdit && editing?.fixed && (
+            <p className="mt-1 text-xs text-muted-foreground">Esse usuário é fixo — não pode renomear.</p>
+          )}
+        </div>
+        <div>
+          <Label htmlFor="ap">{isEdit ? "Nova senha (deixe em branco para manter)" : "Senha"}</Label>
+          <Input id="ap" type="password" value={pass} onChange={(e) => setPass(e.target.value)} placeholder="mínimo 6 caracteres" />
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button type="button" variant="outline" onClick={onClose} className="rounded-full">Cancelar</Button>
+          <Button type="submit" disabled={loading} className="rounded-full">
+            {loading ? "Salvando…" : "Salvar"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+/* ---------- Settings ---------- */
+function SettingsPanel() {
+  const [number, setNumber] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const save = useServerFn(updateWhatsAppNumber);
+
+  useEffect(() => {
+    supabase
+      .from("app_settings")
+      .select("value")
+      .eq("key", "whatsapp_number")
+      .maybeSingle()
+      .then(({ data }) => {
+        setNumber(data?.value ?? DEFAULT_WHATSAPP_NUMBER);
+        setLoading(false);
+      });
+  }, []);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await save({ data: { number } });
+      setNumber(res.number);
+      toast.success("Número do WhatsApp atualizado");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Erro");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (loading) return <p className="text-muted-foreground">Carregando…</p>;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h3 className="font-display text-lg font-black flex items-center gap-2">
+          <Phone className="h-5 w-5 text-primary" /> Número do WhatsApp
+        </h3>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Este é o número que receberá os pedidos do site e o botão flutuante.
+        </p>
+        <form onSubmit={submit} className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <Input
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            placeholder="ex: 5545984311918"
+            className="flex-1"
+          />
+          <Button type="submit" disabled={saving} className="rounded-full">
+            {saving ? "Salvando…" : "Salvar"}
           </Button>
         </form>
+        <p className="mt-2 text-xs text-muted-foreground">
+          Use o formato internacional sem espaços (DDI + DDD + número). Ex: <code>5545984311918</code>
+        </p>
       </div>
     </div>
   );
