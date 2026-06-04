@@ -1,41 +1,17 @@
-## Situação atual
+## Correções na tela de celular
 
-Boa notícia: o backend **já está configurado como você quer**.
+### 1. Botão "Área do Administrador" some no celular
+Em `src/routes/index.tsx` (linha 123-128), o link tem as classes `hidden ... sm:inline-flex`, escondendo no mobile.
 
-- A tabela `products` tem política RLS `Products are public` (SELECT liberado para `anon` e `authenticated`).
-- A tabela `categories` tem política RLS `Categories are public` (SELECT liberado para `anon` e `authenticated`).
-- Não existem múltiplos bancos por administrador — o Lovable Cloud usa **um único banco compartilhado**, então qualquer admin já vê/edita os mesmos produtos e categorias. O CRUD já é global e único.
-- A página inicial (`src/routes/index.tsx`) faz a consulta sem exigir login.
+**Correção:** remover o `hidden`/`sm:inline-flex` e mostrar uma versão compacta no celular — ícone de escudo (`ShieldCheck` do lucide-react) com tooltip/aria-label, mantendo o texto completo "Área do Administrador" em telas ≥ sm.
 
-Ou seja, produtos e categorias **já deveriam aparecer** para qualquer visitante (não logado). Se na prática não estão aparecendo, o problema é em outro lugar — provavelmente **imagens** (bucket privado) ou algum erro silencioso na consulta.
+### 2. Pop-up de cadastro/edição de produto estoura no celular
+Em `src/routes/admin.tsx` (linhas 435-517, componente `ProductForm`), o `<form>` não tem altura máxima nem rolagem própria, então em telas baixas os campos do fim (e o topo, como a foto) ficam offscreen sem possibilidade de scroll dentro do modal.
 
-## O que vou fazer
+**Correções no container do modal:**
+- Container externo: usar `items-stretch sm:items-center` e altura controlada para permitir scroll.
+- Form: aplicar `max-h-[100dvh] sm:max-h-[90vh]` e `flex flex-col` para que o cabeçalho/rodapé fiquem fixos.
+- Envolver o miolo (`grid gap-4 ...`) em um wrapper com `flex-1 overflow-y-auto -mx-6 px-6` para rolar somente os campos, mantendo título e botões "Cancelar/Salvar" visíveis.
+- Adicionar um pequeno padding-bottom seguro (`pb-[env(safe-area-inset-bottom)]`) no celular.
 
-### 1. Tornar o bucket `product-images` público
-Hoje o bucket é privado e o admin usa URLs assinadas com validade de 10 anos. Isso funciona, mas:
-- Imagens enviadas no passado podem ter URLs quebradas
-- Toda nova imagem depende de gerar URL assinada (mais frágil)
-
-Vou tornar o bucket público e adicionar política de SELECT pública. URLs ficam simples e permanentes (`getPublicUrl`). O upload de imagens vai usar a URL pública direta em vez de URL assinada.
-
-### 2. Ajustar `uploadImage` no admin
-Trocar `createSignedUrl` por `getPublicUrl` no `src/routes/admin.tsx`.
-
-### 3. Verificar/garantir a página inicial pública
-Confirmar que `src/routes/index.tsx` mostra os produtos mesmo sem login (já está configurado assim, mas vou validar o fluxo de carregamento e tratar erro caso a consulta falhe — hoje um erro é silencioso e a tela fica vazia).
-
-### 4. Confirmação visual
-Após implementar, abrir a tela inicial em modo anônimo (preview) e verificar se os produtos aparecem com imagens.
-
-## O que NÃO precisa de mudança
-
-- Não há nada a fazer no banco para "tornar CRUD global" — ele já é. Todos os admins enxergam e editam o mesmo catálogo.
-- Não preciso alterar políticas RLS de products/categories — já estão públicas para leitura e restritas a admins para escrita.
-
-## Detalhes técnicos
-
-- Migração de storage: `UPDATE storage.buckets SET public = true WHERE id = 'product-images'` + política `CREATE POLICY "Public read product-images" ON storage.objects FOR SELECT TO public USING (bucket_id = 'product-images')`.
-- Upload no admin passa a usar `supabase.storage.from('product-images').getPublicUrl(path).data.publicUrl`.
-- Tratamento de erro na home: exibir mensagem se `error` retornar das consultas (em vez de simplesmente ficar vazio).
-
-Posso seguir?
+Nenhuma mudança de lógica/CRUD — apenas presentation/CSS.

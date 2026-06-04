@@ -5,7 +5,7 @@ import { cart, useCart } from "@/lib/cart";
 import { brl, useWhatsAppNumber, whatsappLink } from "@/lib/whatsapp";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, X, Tag } from "lucide-react";
+import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, X, Tag, ShieldCheck } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -122,9 +122,11 @@ function Index() {
           <div className="flex items-center gap-2">
             <Link
               to="/admin"
-              className="hidden rounded-full border border-border bg-secondary px-4 py-2 text-sm font-semibold text-secondary-foreground transition hover:bg-secondary/80 sm:inline-flex"
+              aria-label="Área do Administrador"
+              className="inline-flex items-center gap-2 rounded-full border border-border bg-secondary px-3 py-2 text-sm font-semibold text-secondary-foreground transition hover:bg-secondary/80 sm:px-4"
             >
-              Área do Administrador
+              <ShieldCheck className="h-4 w-4" />
+              <span className="hidden sm:inline">Área do Administrador</span>
             </Link>
             <button
               onClick={() => setCartOpen(true)}
