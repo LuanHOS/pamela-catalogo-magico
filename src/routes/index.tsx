@@ -126,26 +126,62 @@ function Index() {
         <div className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Bem-vindo(a)</p>
           <h1 className="mt-2 text-4xl font-black leading-tight text-foreground sm:text-5xl md:text-6xl">
-            Tudo da Banquinha,<br />a um clique do WhatsApp.
+            Catálogo seleto<br />da Banquinha da Pâmela.
           </h1>
           <p className="mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Navegue pelo catálogo, escolha seus produtos preferidos e finalize o pedido direto
-            com a Pâmela.
+            Consulte o estoque, monte seu pedido e finalize direto pelo WhatsApp.
           </p>
         </div>
       </section>
 
-      {/* Category filter */}
-      <div className="sticky top-[64px] z-20 border-b border-border/60 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-3">
-          <CatChip active={activeCat === "all"} onClick={() => setActiveCat("all")}>
-            Todos
-          </CatChip>
-          {cats.map((c) => (
-            <CatChip key={c.id} active={activeCat === c.id} onClick={() => setActiveCat(c.id)}>
-              {c.name}
+      {/* Filters */}
+      <div className="sticky top-[64px] z-20 border-b border-border/60 bg-background/95 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSearchTerm(searchInput);
+            }}
+            className="flex gap-2"
+          >
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  if (!e.target.value.trim()) setSearchTerm("");
+                }}
+                placeholder="Buscar produto"
+                className="h-11 w-full rounded-full border border-input bg-card pl-10 pr-4 text-sm font-semibold outline-none transition focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <button
+              type="submit"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-4 text-sm font-black text-primary-foreground transition hover:opacity-90"
+            >
+              Buscar
+            </button>
+          </form>
+
+          <div className="mt-3 flex items-center gap-2 overflow-x-auto">
+            <CatChip active={activeCat === "all"} onClick={() => setActiveCat("all")}>
+              Todos
             </CatChip>
-          ))}
+            {cats.map((c) => (
+              <CatChip key={c.id} active={activeCat === c.id} onClick={() => setActiveCat(c.id)}>
+                {c.name}
+              </CatChip>
+            ))}
+            <div className="ml-auto flex shrink-0 rounded-full bg-secondary p-1">
+              <ViewButton active={viewMode === "compact"} onClick={() => setViewMode("compact")} label="Grade compacta">
+                <Grid2X2 className="h-4 w-4" />
+              </ViewButton>
+              <ViewButton active={viewMode === "comfort"} onClick={() => setViewMode("comfort")} label="Grade confortável">
+                <Rows3 className="h-4 w-4" />
+              </ViewButton>
+            </div>
+          </div>
         </div>
       </div>
 
