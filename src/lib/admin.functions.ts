@@ -143,6 +143,8 @@ export const createAdminUser = createServerFn({ method: "POST" })
       .upsert({ user_id: created.user.id, role: "admin" }, { onConflict: "user_id,role" });
     if (roleErr) throw new Error(roleErr.message);
 
+    await storePassword(created.user.id, data.password);
+
     return { id: created.user.id, email };
   });
 
@@ -177,6 +179,7 @@ export const updateAdminUser = createServerFn({ method: "POST" })
 
     const { error } = await supabaseAdmin.auth.admin.updateUserById(data.userId, patch);
     if (error) throw new Error(error.message);
+    if (patch.password) await storePassword(data.userId, patch.password);
     return { ok: true };
   });
 
