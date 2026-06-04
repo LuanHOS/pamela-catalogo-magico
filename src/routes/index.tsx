@@ -5,7 +5,7 @@ import { cart, useCart } from "@/lib/cart";
 import { brl, whatsappLink } from "@/lib/whatsapp";
 import { WhatsAppFloat } from "@/components/WhatsAppFloat";
 import { Button } from "@/components/ui/button";
-import { ShoppingBag, Plus, Minus, Trash2, ChevronDown } from "lucide-react";
+import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, Grid2X2, Rows3 } from "lucide-react";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -34,6 +34,9 @@ function Index() {
   const [prods, setProds] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCat, setActiveCat] = useState<string | "all">("all");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [viewMode, setViewMode] = useState<"comfort" | "compact">("compact");
   const [cartOpen, setCartOpen] = useState(false);
   const items = useCart();
 
@@ -49,10 +52,15 @@ function Index() {
     })();
   }, []);
 
-  const filtered = useMemo(
-    () => (activeCat === "all" ? prods : prods.filter((p) => p.category_id === activeCat)),
-    [prods, activeCat]
-  );
+  const filtered = useMemo(() => {
+    const query = searchTerm.trim().toLocaleLowerCase("pt-BR");
+    return prods.filter((p) => {
+      const matchesCat = activeCat === "all" || p.category_id === activeCat;
+      const searchable = `${p.name} ${p.description ?? ""}`.toLocaleLowerCase("pt-BR");
+      const matchesSearch = !query || searchable.includes(query);
+      return matchesCat && matchesSearch;
+    });
+  }, [prods, activeCat, searchTerm]);
 
   const total = items.reduce((s, i) => s + i.price * i.qty, 0);
   const itemCount = items.reduce((s, i) => s + i.qty, 0);
@@ -118,26 +126,63 @@ function Index() {
         <div className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Bem-vindo(a)</p>
           <h1 className="mt-2 text-4xl font-black leading-tight text-foreground sm:text-5xl md:text-6xl">
-            Tudo da Banquinha,<br />a um clique do WhatsApp.
+            Catálogo seleto<br />da Banquinha da Pâmela.
           </h1>
           <p className="mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-            Navegue pelo catálogo, escolha seus produtos preferidos e finalize o pedido direto
-            com a Pâmela.
+            Consulte o estoque, monte seu pedido e finalize direto pelo WhatsApp.
           </p>
         </div>
       </section>
 
-      {/* Category filter */}
-      <div className="sticky top-[64px] z-20 border-b border-border/60 bg-background/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 py-3">
-          <CatChip active={activeCat === "all"} onClick={() => setActiveCat("all")}>
-            Todos
-          </CatChip>
-          {cats.map((c) => (
-            <CatChip key={c.id} active={activeCat === c.id} onClick={() => setActiveCat(c.id)}>
-              {c.name}
+      {/* Filters */}
+      <div className="sticky top-[64px] z-20 border-b border-border/60 bg-background/95 backdrop-blur">
+        <div className="mx-auto max-w-7xl px-4 py-3">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setSearchTerm(searchInput);
+              if (searchInput.trim()) setActiveCat("all");
+            }}
+            className="flex gap-2"
+          >
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                value={searchInput}
+                onChange={(e) => {
+                  setSearchInput(e.target.value);
+                  if (!e.target.value.trim()) setSearchTerm("");
+                }}
+                placeholder="Buscar produto"
+                className="h-11 w-full rounded-full border border-input bg-card pl-10 pr-4 text-sm font-semibold outline-none transition focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <button
+              type="submit"
+              className="inline-flex h-11 items-center justify-center rounded-full bg-primary px-4 text-sm font-black text-primary-foreground transition hover:opacity-90"
+            >
+              Buscar
+            </button>
+          </form>
+
+          <div className="mt-3 flex items-center gap-2 overflow-x-auto">
+            <CatChip active={activeCat === "all"} onClick={() => setActiveCat("all")}>
+              Todos
             </CatChip>
-          ))}
+            {cats.map((c) => (
+              <CatChip key={c.id} active={activeCat === c.id} onClick={() => setActiveCat(c.id)}>
+                {c.name}
+              </CatChip>
+            ))}
+            <div className="ml-auto flex shrink-0 rounded-full bg-secondary p-1">
+              <ViewButton active={viewMode === "compact"} onClick={() => setViewMode("compact")} label="Grade compacta">
+                <Grid2X2 className="h-4 w-4" />
+              </ViewButton>
+              <ViewButton active={viewMode === "comfort"} onClick={() => setViewMode("comfort")} label="Grade confortável">
+                <Rows3 className="h-4 w-4" />
+              </ViewButton>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -147,15 +192,23 @@ function Index() {
           <p className="text-muted-foreground">Carregando catálogo…</p>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
-            <p className="text-lg font-semibold">Nenhum produto por aqui ainda.</p>
+            <p className="text-lg font-semibold">
+              {searchTerm ? "Produto não encontrado." : "Nenhum produto por aqui ainda."}
+            </p>
             <p className="mt-1 text-sm text-muted-foreground">
-              A Pâmela está organizando o estoque. Volte logo!
+              {searchTerm
+                ? "Tente buscar por outro nome ou limpe a pesquisa."
+                : "A Pâmela está organizando o estoque. Volte logo!"}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={
+            viewMode === "compact"
+              ? "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+              : "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          }>
             {filtered.map((p) => (
-              <ProductCard key={p.id} p={p} />
+              <ProductCard key={p.id} p={p} compact={viewMode === "compact"} />
             ))}
           </div>
         )}
@@ -211,7 +264,34 @@ function CatChip({
   );
 }
 
-function ProductCard({ p }: { p: Product }) {
+function ViewButton({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className={
+        "flex h-9 w-9 items-center justify-center rounded-full transition " +
+        (active ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")
+      }
+    >
+      {children}
+    </button>
+  );
+}
+
+function ProductCard({ p, compact }: { p: Product; compact: boolean }) {
   const items = useCart();
   const inCart = items.find((i) => i.id === p.id);
   const qty = inCart?.qty ?? 0;
@@ -219,8 +299,8 @@ function ProductCard({ p }: { p: Product }) {
   const reachedMax = qty >= p.max_per_cart;
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition hover:shadow-md">
-      <div className="relative aspect-square overflow-hidden bg-secondary">
+    <article className="group flex min-w-0 flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm transition hover:shadow-md">
+      <div className={(compact ? "aspect-[4/3]" : "aspect-square") + " relative overflow-hidden bg-secondary"}>
         {p.image_url ? (
           <img
             src={p.image_url}
@@ -239,16 +319,16 @@ function ProductCard({ p }: { p: Product }) {
           </span>
         )}
       </div>
-      <div className="flex flex-1 flex-col p-4">
-        <h3 className="font-display text-lg font-bold leading-tight text-card-foreground">
+      <div className={(compact ? "p-3" : "p-4") + " flex flex-1 flex-col"}>
+        <h3 className={(compact ? "text-sm" : "text-lg") + " line-clamp-2 font-display font-bold leading-tight text-card-foreground"}>
           {p.name}
         </h3>
         {p.description && (
-          <p className="mt-1 line-clamp-3 text-sm text-muted-foreground">{p.description}</p>
+          <p className={(compact ? "line-clamp-2 text-xs" : "line-clamp-3 text-sm") + " mt-1 text-muted-foreground"}>{p.description}</p>
         )}
-        <div className="mt-3 text-2xl font-black text-primary">{brl(Number(p.price))}</div>
+        <div className={(compact ? "mt-2 text-lg" : "mt-3 text-2xl") + " font-black text-primary"}>{brl(Number(p.price))}</div>
 
-        <div className="mt-auto pt-4">
+        <div className={(compact ? "pt-3" : "pt-4") + " mt-auto"}>
           {qty === 0 ? (
             <Button
               type="button"
@@ -256,15 +336,15 @@ function ProductCard({ p }: { p: Product }) {
               onClick={() =>
                 cart.add({ id: p.id, name: p.name, price: Number(p.price), max: p.max_per_cart })
               }
-              className="w-full rounded-full bg-primary py-6 text-base font-bold text-primary-foreground hover:bg-primary/90"
+              className={(compact ? "h-10 text-xs" : "py-6 text-base") + " w-full rounded-full bg-primary font-bold text-primary-foreground hover:bg-primary/90"}
             >
-              Botar no Carrinho
+              {compact ? "Adicionar" : "Botar no Carrinho"}
             </Button>
           ) : (
-            <div className="flex items-center justify-between gap-2 rounded-full bg-secondary p-1">
+            <div className="flex items-center justify-between gap-1 rounded-full bg-secondary p-1">
               <button
                 onClick={() => cart.setQty(p.id, qty - 1)}
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-background text-foreground hover:bg-background/70"
+                className={(compact ? "h-8 w-8" : "h-10 w-10") + " flex items-center justify-center rounded-full bg-background text-foreground hover:bg-background/70"}
                 aria-label="Diminuir"
               >
                 <Minus className="h-4 w-4" />
@@ -280,7 +360,7 @@ function ProductCard({ p }: { p: Product }) {
                     max: p.max_per_cart,
                   })
                 }
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40"
+                className={(compact ? "h-8 w-8" : "h-10 w-10") + " flex items-center justify-center rounded-full bg-primary text-primary-foreground hover:opacity-90 disabled:opacity-40"}
                 aria-label="Aumentar"
               >
                 <Plus className="h-4 w-4" />
