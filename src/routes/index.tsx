@@ -85,7 +85,7 @@ function Index() {
   function finalizar() {
     if (!items.length) return;
     const lines = [
-      "*Pedido — Banca da Pamela* 🌸",
+      "*Pedido — Banca da Pamela*",
       "",
       ...items.map((i, idx) => {
         const sub = i.price * i.qty;
@@ -94,7 +94,7 @@ function Index() {
       "",
       `*Total: ${brl(total)}*`,
       "",
-      "Obrigada! 💛",
+      "Obrigada!",
     ];
     window.open(whatsappLink(lines.join("\n"), whatsNumber), "_blank");
   }
