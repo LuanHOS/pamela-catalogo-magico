@@ -10,8 +10,8 @@ import { ShoppingBag, Plus, Minus, Trash2, ChevronDown, Search, Grid2X2, Rows3 }
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Banquinha da Pâmela — Catálogo" },
-      { name: "description", content: "Catálogo da Banquinha da Pâmela. Monte seu pedido e finalize pelo WhatsApp." },
+      { title: "Banca da Pamela — Catálogo" },
+      { name: "description", content: "Catálogo da Banca da Pamela. Monte seu pedido e finalize pelo WhatsApp." },
     ],
   }),
   component: Index,
@@ -73,7 +73,7 @@ function Index() {
   function finalizar() {
     if (!items.length) return;
     const lines = [
-      "*Pedido — Banquinha da Pâmela* 🌸",
+      "*Pedido — Banca da Pamela* 🌸",
       "",
       ...items.map((i, idx) => {
         const sub = i.price * i.qty;
@@ -98,7 +98,7 @@ function Index() {
             </div>
             <div className="leading-tight">
               <div className="font-display text-xl font-black text-foreground sm:text-2xl">
-                Banquinha da Pâmela
+                Banca da Pamela
               </div>
               <div className="text-xs text-muted-foreground">Catálogo de produtos</div>
             </div>
@@ -131,7 +131,7 @@ function Index() {
         <div className="mx-auto max-w-7xl px-4 py-10 sm:py-14">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-primary">Bem-vindo(a)</p>
           <h1 className="mt-2 text-4xl font-black leading-tight text-foreground sm:text-5xl md:text-6xl">
-            Catálogo seleto<br />da Banquinha da Pâmela.
+            Catálogo de Produtos da<br />Banca da Pamela.
           </h1>
           <p className="mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
             Consulte o estoque, monte seu pedido e finalize direto pelo WhatsApp.
@@ -233,7 +233,7 @@ function Index() {
 
       <footer className="mt-10 border-t border-border/60 bg-secondary/40">
         <div className="mx-auto max-w-7xl px-4 py-8 text-center text-sm text-muted-foreground">
-          © {new Date().getFullYear()} Banquinha da Pâmela — Feito com 💛
+          © {new Date().getFullYear()} Banca da Pamela — Feito com 💛
         </div>
       </footer>
 
