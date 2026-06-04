@@ -117,8 +117,8 @@ function LoginForm() {
         <Button type="submit" disabled={loading} className="w-full rounded-full py-6 text-base font-bold">
           {loading ? "Entrando…" : "Entrar"}
         </Button>
-        <p className="text-center text-xs text-muted-foreground">
-          Usuário inicial: <code className="rounded bg-secondary px-1.5 py-0.5">admin</code> · Senha: <code className="rounded bg-secondary px-1.5 py-0.5">admin</code>
+        <p className="text-center text-xs text-muted-foreground font-semibold">
+          Apenas para Funcionários
         </p>
       </form>
     </div>
