@@ -197,9 +197,13 @@ function Index() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className={
+            viewMode === "compact"
+              ? "grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5"
+              : "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          }>
             {filtered.map((p) => (
-              <ProductCard key={p.id} p={p} />
+              <ProductCard key={p.id} p={p} compact={viewMode === "compact"} />
             ))}
           </div>
         )}
