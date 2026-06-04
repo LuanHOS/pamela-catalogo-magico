@@ -203,6 +203,11 @@ function Index() {
       <main className="mx-auto max-w-7xl px-4 py-8">
         {loading ? (
           <p className="text-muted-foreground">Carregando catálogo…</p>
+        ) : loadError ? (
+          <div className="rounded-2xl border border-destructive/40 bg-destructive/10 p-8 text-center">
+            <p className="text-lg font-semibold text-destructive">Não foi possível carregar o catálogo.</p>
+            <p className="mt-1 text-sm text-muted-foreground">{loadError}</p>
+          </div>
         ) : filtered.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-border bg-card p-12 text-center">
             <p className="text-lg font-semibold">
